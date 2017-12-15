@@ -6,7 +6,6 @@ from albertv0 import *
 from urllib import request, parse
 import os
 import re
-import sys
 
 __iid__ = 'PythonInterface/v0.1'
 __prettyname__ = 'dict.cc'
@@ -20,29 +19,26 @@ if not iconPath:
     iconPath = os.path.dirname(__file__) + '/dictcc.png'
 MAX_RESULTS = 20
 
-def sanitizeWord(word):
-    word = word.replace("\\", "")
-    return word.strip("\" ")
-
 def getResponse(word):
-    # Trick to avoid dict.cc from denying the request: change User-agent to firefox's
     url = "http://www.dict.cc/?s=" + word
     req = request.Request(url, headers={'User-agent': 'Mozilla/6.0'})
     f = request.urlopen(req)
-    return str(f.read())
+    return f.read().decode(f.headers.get_content_charset())
 
 # Find 'var c1Arr' and 'var c2Arr'
 def parseResponse(response):
-    engLine = re.findall('var c1Arr = new Array\(.*?\);', response)[0]
-    deLine = re.findall('var c2Arr = new Array\(.*?\);', response)[0]
+    engMatch = re.findall('var c1Arr = new Array\(.*?\);', response)
+    deMatch = re.findall('var c2Arr = new Array\(.*?\);', response)
 
-    if not engLine or not deLine:
+    if len(engMatch) < 1 or len(deMatch) < 1:
         return [], []
 
-    pattern = "\"[^,]+\""
+    engLine = engMatch[0]
+    deLine = deMatch[0]
 
-    # Return list of matching strings
-    return list(map(sanitizeWord, re.findall(pattern, engLine))), list(map(sanitizeWord, re.findall(pattern, deLine)))  # eng, de
+    # Return list of words
+    pattern = "\"([^,]+)\""
+    return re.findall(pattern, engLine), re.findall(pattern, deLine)  # eng, de
 
 
 def prepareResults(query, engWords, deWords):
